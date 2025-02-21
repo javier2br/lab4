@@ -14,6 +14,12 @@ resource "aws_launch_template" "web_lt" {
               systemctl start httpd
               systemctl enable httpd
               echo "<h1>Bienvenido a mi CMS</h1>" > /var/www/html/index.html
+              amazon-linux-extras install docker -y
+              service docker start
+              # Aquí puedes ejecutar contenedores Docker, por ejemplo:
+              docker run -d -p 80:80 nginxdemos/hello
+              sleep 20
+              docker ps > var/log/docker-ps.log
               EOF
   )
 
