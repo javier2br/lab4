@@ -1,0 +1,7 @@
+# Ejemplo de contenido:
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+terraform.tfvars
+"*.auto.tfvars"

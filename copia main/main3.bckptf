@@ -1,0 +1,106 @@
+terraform {
+  backend "s3" {
+    bucket         = "lockid-backend"
+    key            = "terraform.tfstate"
+    region         = "eu-west-3"
+    dynamodb_table = "terraform_state"
+
+  }
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region  = "eu-west-3"
+  profile = "default"
+
+}
+
+
+# 1. Crear el bucket S3 de manera privada
+resource "aws_s3_bucket" "backup_images1" {
+  bucket = "backup-images1"
+    
+  tags = {
+    Environment = "test_galician"
+  }
+}
+
+# 2. Crear una Origin Access Identity (OAI) para CloudFront
+resource "aws_cloudfront_origin_access_identity" "oai" {
+  comment = "OAI para acceder al bucket S3 backup-images1"
+}
+
+# 3. Configurar una política en el bucket que permita solo a la OAI obtener objetos
+resource "aws_s3_bucket_policy" "backup_images_policy" {
+  bucket = aws_s3_bucket.backup_images1.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontAccess",
+        Effect = "Allow",
+        Principal = {
+          AWS = aws_cloudfront_origin_access_identity.oai.iam_arn
+        },
+        Action   = "s3:GetObject",
+        Resource = "arn:aws:s3:::backup-images1/*"
+      }
+    ]
+  })
+}
+
+# 4. Configurar la distribución CloudFront para que use la OAI y apunte al bucket S3
+resource "aws_cloudfront_distribution" "hercules" {
+  origin {
+    # Se utiliza el bucket_regional_domain_name para mayor compatibilidad
+    domain_name = aws_s3_bucket.backup_images1.bucket_regional_domain_name
+    origin_id   = "S3-backup-images1"
+
+    s3_origin_config {
+      # Se asigna la OAI creada para que CloudFront tenga permiso de acceder al bucket
+      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
+    }
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "Backup imagenes1"
+  default_root_object = "index.html"
+
+  default_cache_behavior {
+    # Puedes restringir los métodos permitidos; en este ejemplo se dejan solo los básicos
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-backup-images1"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  tags = {
+    Environment = "test_galician"
+  }
+}
