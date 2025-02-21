@@ -116,16 +116,16 @@ module "s3_cloudfront" {
 }
 
 module "cache" {
-  source                = "./modules/cache"
-  cache_cluster_id      = "lab4-cache"
-  private_subnet_ids    = module.vpc.private_subnet_ids
+  source                  = "./modules/cache"
+  cache_cluster_id        = "lab4-cache"
+  private_subnet_ids      = module.vpc.private_subnet_ids
   cache_subnet_group_name = "lab4-cache-subnet-group"
-  cache_engine          = "redis"
-  cache_node_type       = "cache.t2.micro"
-  num_cache_nodes       = 1
-  parameter_group_name  = "default.redis7"
-  cache_port            = 6379
-  cache_sg_ids          = [ module.security_groups.cache_sg_id ]
+  cache_engine            = "redis"
+  cache_node_type         = "cache.t2.micro"
+  num_cache_nodes         = 1
+  parameter_group_name    = "default.redis7"
+  cache_port              = 6379
+  cache_sg_ids            = [module.security_groups.cache_sg_id]
 }
 
 output "alb_dns" {
@@ -134,4 +134,17 @@ output "alb_dns" {
 
 output "cloudfront_domain" {
   value = module.s3_cloudfront.cloudfront_domain_name
+}
+
+
+module "cloudwatch_dashboard" {
+  source         = "./modules/cloudwatch_dashboard"
+  dashboard_name = "lab4-dashboard"
+  asg_name       = "lab4-asg"
+  rds_identifier = "rds-postgres-instance"
+  region         = "eu-west-3"
+}
+
+output "dashboard_name" {
+  value = module.cloudwatch_dashboard.dashboard_name
 }
