@@ -1,2 +1,2 @@
 # lab4
-# laboratorio practico de una infraestructura n DOckers y EC2 
+# laboratorio practico de una infraestructura en Dockers y EC2 
